@@ -5,7 +5,7 @@ CLI Message Screens — Inbox, conversations, send/receive messages.
 from cli.menus import print_header, pause
 from patterns.singleton import SessionManager
 from services import message_service
-from storage import json_store
+from storage import db_store
 
 
 def message_menu():
@@ -132,7 +132,7 @@ def new_message_screen():
         return
 
     # Find user by email
-    recipients = json_store.find_by_field('users.json', 'email', email.lower().strip())
+    recipients = db_store.find_by_field('users.json', 'email', email.lower().strip())
     if not recipients:
         print(f"\n  ❌ No user found with email: {email}")
         pause()

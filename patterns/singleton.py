@@ -41,8 +41,8 @@ class SessionManager:
     def refresh(self):
         """Reload the current user from storage to pick up balance changes, etc."""
         if self._current_user:
-            from storage import json_store
-            fresh = json_store.find_by_id('users.json', self._current_user['id'])
+            from storage import db_store
+            fresh = db_store.find_by_id('users.json', self._current_user['id'])
             if fresh:
                 self._current_user = fresh
 

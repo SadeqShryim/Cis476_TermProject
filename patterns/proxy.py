@@ -6,7 +6,7 @@ It also sends notifications to both renter and owner after a transaction.
 """
 
 from models.notification import create_notification
-from storage import json_store
+from storage import db_store
 from datetime import datetime
 
 
@@ -15,8 +15,8 @@ class RealPaymentService:
 
     def process(self, renter_id, owner_id, amount):
         """Deduct from renter, credit to owner."""
-        renter = json_store.find_by_id('users.json', renter_id)
-        owner = json_store.find_by_id('users.json', owner_id)
+        renter = db_store.find_by_id('users.json', renter_id)
+        owner = db_store.find_by_id('users.json', owner_id)
 
         if not renter or not owner:
             return {'success': False, 'message': 'User not found'}
@@ -24,8 +24,8 @@ class RealPaymentService:
         new_renter_balance = round(renter['balance'] - amount, 2)
         new_owner_balance = round(owner['balance'] + amount, 2)
 
-        json_store.update('users.json', renter_id, {'balance': new_renter_balance})
-        json_store.update('users.json', owner_id, {'balance': new_owner_balance})
+        db_store.update('users.json', renter_id, {'balance': new_renter_balance})
+        db_store.update('users.json', owner_id, {'balance': new_owner_balance})
 
         return {
             'success': True,
@@ -59,7 +59,7 @@ class PaymentProxy:
             return {'success': False, 'message': 'Payment amount must be positive'}
 
         # Step 2: Validate renter balance
-        renter = json_store.find_by_id('users.json', renter_id)
+        renter = db_store.find_by_id('users.json', renter_id)
         if not renter:
             return {'success': False, 'message': 'Renter not found'}
 
@@ -92,12 +92,12 @@ class PaymentProxy:
                 f"💰 Payment of ${amount:.2f} received. New balance: ${result['owner_balance']:.2f}",
                 'payment'
             )
-            json_store.add('notifications.json', renter_notif)
-            json_store.add('notifications.json', owner_notif)
+            db_store.add('notifications.json', renter_notif)
+            db_store.add('notifications.json', owner_notif)
 
             # Mark booking as paid if booking_id provided
             if booking_id:
-                json_store.update('bookings.json', booking_id, {'paid': True})
+                db_store.update('bookings.json', booking_id, {'paid': True})
 
         return result
 

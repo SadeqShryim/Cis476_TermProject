@@ -1,6 +1,6 @@
 """Message service — send/receive messages between users."""
 
-from storage import json_store
+from storage import db_store
 from models.message import create_message
 from models.notification import create_notification
 
@@ -10,7 +10,7 @@ def send_message(sender_id, receiver_id, content):
     if sender_id == receiver_id:
         return {'success': False, 'message': 'Cannot send a message to yourself'}
 
-    receiver = json_store.find_by_id('users.json', receiver_id)
+    receiver = db_store.find_by_id('users.json', receiver_id)
     if not receiver:
         return {'success': False, 'message': 'Recipient not found'}
 
@@ -18,10 +18,10 @@ def send_message(sender_id, receiver_id, content):
         return {'success': False, 'message': 'Message cannot be empty'}
 
     msg = create_message(sender_id, receiver_id, content.strip())
-    json_store.add('messages.json', msg)
+    db_store.add('messages.json', msg)
 
     # Notify recipient
-    sender = json_store.find_by_id('users.json', sender_id)
+    sender = db_store.find_by_id('users.json', sender_id)
     sender_email = sender['email'] if sender else 'Unknown'
     preview = content[:50] + ('...' if len(content) > 50 else '')
     notif = create_notification(
@@ -29,14 +29,14 @@ def send_message(sender_id, receiver_id, content):
         f"💬 New message from {sender_email}: {preview}",
         'message'
     )
-    json_store.add('notifications.json', notif)
+    db_store.add('notifications.json', notif)
 
     return {'success': True, 'message': 'Message sent!', 'msg': msg}
 
 
 def get_conversation(user1_id, user2_id):
     """Get all messages between two users, sorted chronologically."""
-    messages = json_store.load_all('messages.json')
+    messages = db_store.load_all('messages.json')
     convo = [
         m for m in messages
         if (m['sender_id'] == user1_id and m['receiver_id'] == user2_id)
@@ -48,7 +48,7 @@ def get_conversation(user1_id, user2_id):
 
 def get_conversations(user_id):
     """Get a list of conversation summaries (one per unique partner)."""
-    messages = json_store.load_all('messages.json')
+    messages = db_store.load_all('messages.json')
     partners = set()
     for m in messages:
         if m['sender_id'] == user_id:
@@ -58,7 +58,7 @@ def get_conversations(user_id):
 
     result = []
     for partner_id in partners:
-        partner = json_store.find_by_id('users.json', partner_id)
+        partner = db_store.find_by_id('users.json', partner_id)
         convo = get_conversation(user_id, partner_id)
         last_msg = convo[-1] if convo else None
         unread = sum(
@@ -82,7 +82,7 @@ def get_conversations(user_id):
 
 def mark_conversation_read(user_id, partner_id):
     """Mark all messages from partner to user as read."""
-    messages = json_store.load_all('messages.json')
+    messages = db_store.load_all('messages.json')
     changed = False
     for m in messages:
         if (m['receiver_id'] == user_id and m['sender_id'] == partner_id
@@ -90,4 +90,4 @@ def mark_conversation_read(user_id, partner_id):
             m['read'] = True
             changed = True
     if changed:
-        json_store.save_all('messages.json', messages)
+        db_store.save_all('messages.json', messages)

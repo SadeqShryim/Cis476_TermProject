@@ -51,37 +51,39 @@ def section(title):
 
 def test_storage():
     """Test the JSON storage layer."""
-    section("1. STORAGE LAYER (json_store)")
+    section("1. STORAGE LAYER (db_store)")
 
-    from storage import json_store
+    from storage import db_store
 
     # Add and retrieve
     item = {'id': 'test-1', 'name': 'Test Item'}
-    json_store.add('test.json', item)
-    loaded = json_store.load_all('test.json')
+    db_store.add('test.json', item)
+    loaded = db_store.load_all('test.json')
     check("Add and load item", len(loaded) == 1 and loaded[0]['id'] == 'test-1')
 
     # Find by ID
-    found = json_store.find_by_id('test.json', 'test-1')
+    found = db_store.find_by_id('test.json', 'test-1')
     check("Find by ID", found is not None and found['name'] == 'Test Item')
 
     # Update
-    json_store.update('test.json', 'test-1', {'name': 'Updated'})
-    updated = json_store.find_by_id('test.json', 'test-1')
+    db_store.update('test.json', 'test-1', {'name': 'Updated'})
+    updated = db_store.find_by_id('test.json', 'test-1')
     check("Update item", updated['name'] == 'Updated')
 
     # Find by field
-    results = json_store.find_by_field('test.json', 'name', 'Updated')
+    results = db_store.find_by_field('test.json', 'name', 'Updated')
     check("Find by field", len(results) == 1)
 
     # Delete
-    json_store.delete('test.json', 'test-1')
-    deleted = json_store.find_by_id('test.json', 'test-1')
+    db_store.delete('test.json', 'test-1')
+    deleted = db_store.find_by_id('test.json', 'test-1')
     check("Delete item", deleted is None)
 
     # Clean up
-    os.remove(os.path.join(DATA_DIR, 'test.json'))
-
+    try:
+        os.remove(os.path.join(DATA_DIR, 'test.json'))
+    except FileNotFoundError:
+        pass
 
 def test_user_model():
     """Test user model and password hashing."""
@@ -469,16 +471,16 @@ def test_proxy_and_payment(alice_id, bob_id, active_booking_id):
     section("10. PROXY PATTERN — Payment Service")
 
     from services import payment_service, notification_service
-    from storage import json_store
+    from storage import db_store
 
     # Get pre-payment balances
-    bob_before = json_store.find_by_id('users.json', bob_id)
-    alice_before = json_store.find_by_id('users.json', alice_id)
+    bob_before = db_store.find_by_id('users.json', bob_id)
+    alice_before = db_store.find_by_id('users.json', alice_id)
     bob_bal = bob_before['balance']
     alice_bal = alice_before['balance']
 
     # Get booking to pay
-    booking = json_store.find_by_id('bookings.json', active_booking_id)
+    booking = db_store.find_by_id('bookings.json', active_booking_id)
     amount = booking['total_price']
 
     # Process payment (Proxy validates → logs → processes → notifies)
@@ -486,13 +488,13 @@ def test_proxy_and_payment(alice_id, bob_id, active_booking_id):
     check("Payment success", result['success'])
 
     # Balances updated
-    bob_after = json_store.find_by_id('users.json', bob_id)
-    alice_after = json_store.find_by_id('users.json', alice_id)
+    bob_after = db_store.find_by_id('users.json', bob_id)
+    alice_after = db_store.find_by_id('users.json', alice_id)
     check("Renter balance decreased", bob_after['balance'] == round(bob_bal - amount, 2))
     check("Owner balance increased", alice_after['balance'] == round(alice_bal + amount, 2))
 
     # Booking marked as paid
-    updated_booking = json_store.find_by_id('bookings.json', active_booking_id)
+    updated_booking = db_store.find_by_id('bookings.json', active_booking_id)
     check("Booking marked paid", updated_booking.get('paid') is True)
 
     # Both got payment notifications
@@ -632,21 +634,21 @@ def test_data_persistence():
     """Test that data persists in JSON files."""
     section("14. DATA PERSISTENCE")
 
-    from storage import json_store
+    from storage import db_store
 
-    users = json_store.load_all('users.json')
+    users = db_store.load_all('users.json')
     check("Users persisted", len(users) >= 2)
 
-    cars = json_store.load_all('cars.json')
+    cars = db_store.load_all('cars.json')
     check("Cars persisted", len(cars) >= 1)
 
-    bookings = json_store.load_all('bookings.json')
+    bookings = db_store.load_all('bookings.json')
     check("Bookings persisted", len(bookings) >= 1)
 
-    messages = json_store.load_all('messages.json')
+    messages = db_store.load_all('messages.json')
     check("Messages persisted", len(messages) >= 2)
 
-    notifications = json_store.load_all('notifications.json')
+    notifications = db_store.load_all('notifications.json')
     check("Notifications persisted", len(notifications) >= 1)
 
 

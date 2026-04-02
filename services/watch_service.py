@@ -1,6 +1,6 @@
 """Watch service — watch/unwatch cars, trigger observer notifications."""
 
-from storage import json_store
+from storage import db_store
 from services.car_service import watch_manager
 from services.notification_service import add_notification
 from patterns.observer import WatcherObserver
@@ -18,7 +18,7 @@ def watch_car(user_id, car_id, max_price=None, desired_start=None, desired_end=N
     Start watching a car with optional criteria.
     Uses the Observer pattern to register the watcher.
     """
-    car = json_store.find_by_id('cars.json', car_id)
+    car = db_store.find_by_id('cars.json', car_id)
     if not car:
         return {'success': False, 'message': 'Car not found'}
 
@@ -39,7 +39,7 @@ def watch_car(user_id, car_id, max_price=None, desired_start=None, desired_end=N
         'desired_end': desired_end
     }
     watchers.append(watcher_data)
-    json_store.update('cars.json', car_id, {'watchers': watchers})
+    db_store.update('cars.json', car_id, {'watchers': watchers})
 
     # Register observer with the in-memory WatchManager
     observer = WatcherObserver(
@@ -56,7 +56,7 @@ def watch_car(user_id, car_id, max_price=None, desired_start=None, desired_end=N
 
 def unwatch_car(user_id, car_id):
     """Stop watching a car."""
-    car = json_store.find_by_id('cars.json', car_id)
+    car = db_store.find_by_id('cars.json', car_id)
     if not car:
         return {'success': False, 'message': 'Car not found'}
 
@@ -66,7 +66,7 @@ def unwatch_car(user_id, car_id):
     if len(new_watchers) == len(watchers):
         return {'success': False, 'message': 'You are not watching this car'}
 
-    json_store.update('cars.json', car_id, {'watchers': new_watchers})
+    db_store.update('cars.json', car_id, {'watchers': new_watchers})
     watch_manager.remove_watcher(car_id, user_id)
 
     return {'success': True, 'message': 'Stopped watching this car'}
@@ -74,7 +74,7 @@ def unwatch_car(user_id, car_id):
 
 def get_watched_cars(user_id):
     """Return a list of cars the user is watching, with their criteria."""
-    cars = json_store.load_all('cars.json')
+    cars = db_store.load_all('cars.json')
     watched = []
     for car in cars:
         if not car.get('is_active', True):
@@ -91,7 +91,7 @@ def restore_watchers():
     Reload watcher registrations from JSON into the in-memory WatchManager.
     Must be called on application startup so observers are listening.
     """
-    cars = json_store.load_all('cars.json')
+    cars = db_store.load_all('cars.json')
     for car in cars:
         for w in car.get('watchers', []):
             observer = WatcherObserver(
