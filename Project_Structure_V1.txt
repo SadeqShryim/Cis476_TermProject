@@ -1,0 +1,51 @@
+S:\Cis476_TermProject\
+├── Term_Project.pdf
+├── main.py                     # Entry point — launches the CLI
+├── requirements.txt            # Dependencies (bcrypt, etc.)
+│
+├── models/                     # Data classes / domain objects
+│   ├── __init__.py
+│   ├── user.py                 # User model (id, email, password_hash, security_qs, balance)
+│   ├── car.py                  # Car model (id, owner_id, model, year, mileage, pricing, etc.)
+│   ├── booking.py              # Booking model (id, car_id, renter_id, dates, status)
+│   ├── message.py              # Message model (id, sender_id, receiver_id, content, timestamp)
+│   └── notification.py         # Notification model (id, user_id, content, read status)
+│
+├── patterns/                   # Design pattern implementations (required by assignment)
+│   ├── __init__.py
+│   ├── singleton.py            # Singleton — SessionManager
+│   ├── observer.py             # Observer — CarWatcher / WatchNotifier
+│   ├── mediator.py             # Mediator — UIMediator (coordinates CLI screens)
+│   ├── builder.py              # Builder — CarListingBuilder
+│   ├── proxy.py                # Proxy — PaymentProxy
+│   └── chain_of_responsibility.py  # CoR — SecurityQuestionChain (password recovery)
+│
+├── services/                   # Business logic layer (reusable in Phase 2)
+│   ├── __init__.py
+│   ├── auth_service.py         # Registration, login, password recovery
+│   ├── car_service.py          # CRUD for car listings, availability checks
+│   ├── booking_service.py      # Search, book, conflict detection
+│   ├── watch_service.py        # Watch/unwatch cars, trigger notifications
+│   ├── message_service.py      # Send/receive messages
+│   ├── payment_service.py      # Simulated payments (balance updates)
+│   └── notification_service.py # In-app notification delivery
+│
+├── storage/                    # Data persistence layer
+│   ├── __init__.py
+│   └── json_store.py           # Read/write JSON files (swap for DB adapter in Phase 2)
+│
+├── cli/                        # Terminal UI layer (Phase 1 only — replaced by web in Phase 2)
+│   ├── __init__.py
+│   ├── menus.py                # Main menu, sub-menus, navigation
+│   ├── auth_cli.py             # Registration, login, password recovery screens
+│   ├── owner_cli.py            # List car, manage listings screens
+│   ├── renter_cli.py           # Search, book, watch screens
+│   ├── message_cli.py          # Messaging interface
+│   └── payment_cli.py          # Payment screen
+│
+└── data/                       # JSON data files (auto-created at runtime)
+    ├── users.json
+    ├── cars.json
+    ├── bookings.json
+    ├── messages.json
+    └── notifications.json
