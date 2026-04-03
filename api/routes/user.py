@@ -60,7 +60,7 @@ def unwatch_car(car_id: str, user_id: str = Depends(get_current_user)):
 
 @router.get("/messages")
 def get_conversations(user_id: str = Depends(get_current_user)):
-    return message_service.get_user_conversations(user_id)
+    return message_service.get_conversations(user_id)
 
 @router.get("/messages/{other_user_id}")
 def get_messages(other_user_id: str, user_id: str = Depends(get_current_user)):
