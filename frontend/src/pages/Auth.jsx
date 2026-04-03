@@ -53,9 +53,21 @@ export default function Auth() {
         login(data.user, data.token);
         navigate('/dashboard');
       } else {
-        // Auto-login after registration is not implemented in backend, switch to login
-        setIsLogin(true);
-        setError('Registration successful. Please log in.');
+        // Auto-login after registration
+        const loginRes = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        
+        const loginData = await loginRes.json();
+        
+        if (!loginRes.ok) {
+          throw new Error(loginData.detail || 'Login failed after registration');
+        }
+        
+        login(loginData.user, loginData.token);
+        navigate('/dashboard');
       }
     } catch (err) {
       setError(err.message);
@@ -63,14 +75,14 @@ export default function Auth() {
   };
 
   return (
-    <div className="container" style={{ maxWidth: '500px', marginTop: '4rem' }}>
+    <div className="container auth-container">
       <div className="glass-card animate-fade-in">
-        <h2 style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+        <h2 className="text-center">
           {isLogin ? 'Welcome Back' : 'Create Account'}
         </h2>
         
         {error && (
-          <div style={{ padding: '0.75rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--danger)', borderRadius: 'var(--radius-md)', color: '#fca5a5', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+          <div className="alert alert-danger">
             {error}
           </div>
         )}
@@ -98,43 +110,42 @@ export default function Auth() {
           </div>
 
           {!isLogin && (
-            <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid var(--border-light)' }}>
+            <div className="security-questions">
               <h3>Security Questions</h3>
-              <p style={{ fontSize: '0.85rem' }}>Required for password recovery</p>
+              <p>Required for password recovery</p>
               
               <div className="form-group">
                 <label>Question 1</label>
                 <input required value={q1} onChange={e => setQ1(e.target.value)} placeholder="e.g. First pet's name" />
-                <input required value={a1} onChange={e => setA1(e.target.value)} placeholder="Answer" style={{ marginTop: '0.5rem' }} />
+                <input required value={a1} onChange={e => setA1(e.target.value)} placeholder="Answer" />
               </div>
 
               <div className="form-group">
                 <label>Question 2</label>
                 <input required value={q2} onChange={e => setQ2(e.target.value)} placeholder="e.g. Mother's maiden name" />
-                <input required value={a2} onChange={e => setA2(e.target.value)} placeholder="Answer" style={{ marginTop: '0.5rem' }} />
+                <input required value={a2} onChange={e => setA2(e.target.value)} placeholder="Answer" />
               </div>
 
               <div className="form-group">
                 <label>Question 3</label>
                 <input required value={q3} onChange={e => setQ3(e.target.value)} placeholder="e.g. Favorite color" />
-                <input required value={a3} onChange={e => setA3(e.target.value)} placeholder="Answer" style={{ marginTop: '0.5rem' }} />
+                <input required value={a3} onChange={e => setA3(e.target.value)} placeholder="Answer" />
               </div>
             </div>
           )}
 
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }}>
+          <button type="submit" className="btn btn-primary btn-block">
             {isLogin ? 'Sign In' : 'Sign Up'}
           </button>
         </form>
 
-        <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.9rem' }}>
-          <span style={{ color: 'var(--text-muted)' }}>
+        <div className="form-switch">
+          <span>
             {isLogin ? "Don't have an account? " : "Already have an account? "}
           </span>
           <button 
             type="button" 
             onClick={() => setIsLogin(!isLogin)} 
-            style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontWeight: '500' }}
           >
             {isLogin ? 'Register' : 'Login'}
           </button>

@@ -251,3 +251,71 @@ input::placeholder, textarea::placeholder {
 .delay-100 { animation-delay: 100ms; opacity: 0; }
 .delay-200 { animation-delay: 200ms; opacity: 0; }
 .delay-300 { animation-delay: 300ms; opacity: 0; }
+
+/* Auth Page */
+.auth-container {
+  max-width: 500px;
+  margin-top: 4rem;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.security-questions {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-light);
+}
+
+.security-questions h3 {
+  font-size: 1.2rem;
+}
+
+.security-questions p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.form-switch {
+  text-align: center;
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.form-switch span {
+  color: var(--text-muted);
+}
+
+.form-switch button {
+  background: none;
+  border: none;
+  color: var(--primary);
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.btn-block {
+  display: block;
+  width: 100%;
+}
+
+/* Alerts */
+.alert {
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+}
+
+.alert-danger {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid var(--danger);
+  color: #fca5a5;
+}
+
+.alert-success {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid var(--success);
+  color: #34d399;
+}

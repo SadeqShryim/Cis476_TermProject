@@ -36,22 +36,21 @@ def search_cars(query: SearchQueryModel):
 
 @router.post("/")
 def book_car(data: BookCarModel, user_id: str = Depends(get_current_user)):
-    booking = booking_service.book_car(
+    result = booking_service.book_car(
         car_id=data.car_id,
         renter_id=user_id,
-        owner_id=data.owner_id,
         start_date=data.start_date,
         end_date=data.end_date
     )
-    if not booking:
-        raise HTTPException(status_code=400, detail="Cannot book car. It may be your own car or unavailable dates.")
-    return {"message": "Booking successful", "booking": booking}
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("message", "Cannot book car. It may be your own car or unavailable dates."))
+    return {"message": "Booking successful", "booking": result.get("booking")}
 
 @router.post("/{booking_id}/cancel")
 def cancel_booking(booking_id: str, user_id: str = Depends(get_current_user)):
-    success = booking_service.cancel_booking(booking_id, user_id)
-    if not success:
-        raise HTTPException(status_code=400, detail="Cancellation failed or unauthorized.")
+    result = booking_service.cancel_booking(booking_id, user_id)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("message", "Cancellation failed or unauthorized."))
     return {"message": "Booking cancelled successfully"}
 
 @router.get("/as-renter")
@@ -60,4 +59,4 @@ def get_renter_bookings(user_id: str = Depends(get_current_user)):
 
 @router.get("/as-owner")
 def get_owner_bookings(user_id: str = Depends(get_current_user)):
-    return booking_service.get_owner_bookings(user_id)
+    return booking_service.get_user_bookings(user_id, as_renter=False)
