@@ -1,0 +1,233 @@
+@startuml
+title Design Patterns Overview
+
+package "Builder Pattern" {
+    class CarListingBuilder {
+        + reset()
+        + set_owner(owner_id)
+        + set_make(make)
+        + set_model(model)
+        + set_year(year)
+        + set_mileage(mileage)
+        + set_daily_price(price)
+        + set_location(location)
+        + add_feature(feature)
+        + add_availability(start_date, end_date)
+        + validate()
+        + build(): Car
+    }
+
+    class Car <<Product>> {
+        + id
+        + owner_id
+        + make
+        + model
+        + year
+        + mileage
+        + daily_price
+        + location
+        + features
+        + availability
+    }
+
+    object create_car <<Director/Factory>>
+
+    CarListingBuilder ..> Car : builds >
+    create_car ..> Car : creates >
+    CarListingBuilder ..> create_car : uses
+}
+
+package "Chain of Responsibility Pattern" {
+    abstract class Handler {
+        + set_next(handler: Handler)
+        + handle(request)
+    }
+
+    class SecurityQuestionHandler {
+        - _question_index
+        - _next_handler
+        + set_next(handler: SecurityQuestionHandler)
+        + handle(user: User, answers: list): bool
+    }
+
+    class User <<Client/Request>> {
+        + id
+        + username
+        + security_questions
+        --
+        + get_security_question(index)
+    }
+
+    SecurityQuestionHandler --|> Handler
+    SecurityQuestionHandler ..> User : verifies
+    SecurityQuestionHandler "1" --> "0..1" SecurityQuestionHandler : _next_handler
+}
+
+package "Mediator Pattern" {
+    abstract class Mediator {
+        + notify(sender, event, data)
+    }
+
+    abstract class Colleague {
+        # _mediator: Mediator
+        + set_mediator(mediator: Mediator)
+        + receive(event, data)
+    }
+
+    class UIMediator {
+        - _components: dict
+        - _shared_data: dict
+        + register(name, component: Colleague)
+        + notify(sender, event, data)
+        + get_data(key)
+        + set_data(key, value)
+        + get_component(name)
+    }
+
+    class CLIComponent <<Colleague>> {
+        + name
+        + set_mediator(mediator: UIMediator)
+        + receive(event, data)
+        --
+        // Example CLI Screens
+        // AuthScreen
+        // MainMenuScreen
+        // RenterMenuScreen
+        // OwnerMenuScreen
+        // PaymentScreen
+    }
+
+    UIMediator --|> Mediator
+    CLIComponent --|> Colleague
+    UIMediator "1" o-- "*" CLIComponent : manages
+    CLIComponent ..> UIMediator : communicates via
+}
+
+package "Observer Pattern" {
+    abstract class Subject {
+        + attach(observer)
+        + detach(observer)
+        + notify(data)
+    }
+
+    abstract class Observer {
+        + update(data)
+    }
+
+    class CarSubject {
+        - _observers: list
+        + attach(observer: WatcherObserver)
+        + detach(observer: WatcherObserver)
+        + detach_by_user(user_id)
+        + notify(car_data, change_type)
+    }
+
+    class WatcherObserver {
+        + user_id
+        + max_price
+        + desired_start
+        + desired_end
+        + callback
+        + update(car_data, change_type)
+    }
+
+    class WatchManager <<Client/Manager>> {
+        - _subjects: dict
+        + get_or_create_subject(car_id): CarSubject
+        + add_watcher(car_id, observer: WatcherObserver)
+        + remove_watcher(car_id, user_id)
+        + notify_car_change(car_id, car_data, change_type)
+    }
+
+    class Car <<Concrete Subject Data>> {
+        + id
+        + daily_price
+        + availability
+        --
+        // Other car attributes
+    }
+
+    interface NotificationService <<Implied by Callback>> {
+        + send_notification(user_id, message)
+    }
+
+    CarSubject --|> Subject
+    WatcherObserver --|> Observer
+    CarSubject "1" o-- "*" WatcherObserver : notifies
+    WatchManager "1" o-- "*" CarSubject : manages
+    WatcherObserver ..> Car : observes data
+    WatcherObserver ..> NotificationService : uses callback
+}
+
+package "Proxy Pattern" {
+    interface PaymentService {
+        + process(renter_id, owner_id, amount): dict
+    }
+
+    class RealPaymentService {
+        + process(renter_id, owner_id, amount): dict
+    }
+
+    class PaymentProxy {
+        - _real_service: RealPaymentService
+        - _transaction_log: list
+        + process_payment(renter_id, owner_id, amount, booking_id): dict
+        - _log_transaction(...)
+        + get_transaction_log()
+    }
+
+    class User <<Client/Data>> {
+        + id
+        + balance
+        --
+        // Other user attributes
+    }
+
+    class Notification <<Data>> {
+        + id
+        + user_id
+        + message
+        + type
+        + timestamp
+    }
+
+    class DBStore <<Dependency>> {
+        + find_by_id(collection, id)
+        + update(collection, id, data)
+        + add(collection, data)
+    }
+
+    PaymentProxy --|> PaymentService
+    RealPaymentService --|> PaymentService
+    PaymentProxy "1" o-- "1" RealPaymentService : delegates to
+    PaymentProxy ..> User : validates/updates balance
+    PaymentProxy ..> Notification : creates
+    PaymentProxy ..> DBStore : persists data
+}
+
+package "Singleton Pattern" {
+    class SessionManager {
+        - _instance: SessionManager {static}
+        - _current_user: User
+        --
+        + {static} __new__(cls)
+        + login(user: User)
+        + logout()
+        + get_current_user(): User
+        + is_authenticated(): bool
+        + update_user(updates)
+        + refresh()
+        + {static} reset()
+    }
+
+    class User <<Managed Object>> {
+        + id
+        + username
+        --
+        // Other user attributes
+    }
+
+    SessionManager ..> User : manages current
+}
+
+@enduml
