@@ -16,12 +16,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from api.routes import auth, cars, bookings, user, payments
+from api.routes import auth, cars, bookings, user, payments, reviews
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(cars.router, prefix="/api/cars", tags=["Cars"])
 app.include_router(bookings.router, prefix="/api/bookings", tags=["Bookings"])
 app.include_router(user.router, prefix="/api/user", tags=["User"])
 app.include_router(payments.router, prefix="/api/payments", tags=["Payments"])
+app.include_router(reviews.router, prefix="/api/reviews", tags=["Reviews"])
 # ...
 
 @app.get("/")
