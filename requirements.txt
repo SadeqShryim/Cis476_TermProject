@@ -1,3 +1,5 @@
-# DriveShare - Phase 1 (Terminal App)
-# No external dependencies needed — uses Python standard library only
-# Phase 2 will add: fastapi, uvicorn, etc.
+fastapi
+uvicorn
+pydantic
+python-dotenv
+sqlalchemy

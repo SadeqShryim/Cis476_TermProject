@@ -33,7 +33,7 @@ def get_profile(user_id: str = Depends(get_current_user)):
 
 @router.get("/notifications")
 def get_notifications(user_id: str = Depends(get_current_user)):
-    return notification_service.get_user_notifications(user_id)
+    return notification_service.get_notifications(user_id)
 
 @router.post("/notifications/mark-read")
 def mark_read(user_id: str = Depends(get_current_user)):
@@ -46,19 +46,21 @@ def get_watched_cars(user_id: str = Depends(get_current_user)):
 
 @router.post("/watch")
 def watch_car(data: WatchModel, user_id: str = Depends(get_current_user)):
-    success = watch_service.watch_car(data.car_id, user_id, data.target_price)
-    if not success:
-        raise HTTPException(status_code=400, detail="Cannot watch your own car or already watching.")
-    return {"message": "Car watched successfully"}
+    result = watch_service.watch_car(user_id, data.car_id, data.target_price)
+    if not result['success']:
+        raise HTTPException(status_code=400, detail=result['message'])
+    return {"message": result['message']}
 
 @router.post("/unwatch/{car_id}")
 def unwatch_car(car_id: str, user_id: str = Depends(get_current_user)):
-    success = watch_service.unwatch_car(car_id, user_id)
-    return {"message": "Car unwatched successfully"}
+    result = watch_service.unwatch_car(user_id, car_id)
+    if not result['success']:
+        raise HTTPException(status_code=400, detail=result['message'])
+    return {"message": result['message']}
 
 @router.get("/messages")
 def get_conversations(user_id: str = Depends(get_current_user)):
-    return message_service.get_user_conversations(user_id)
+    return message_service.get_conversations(user_id)
 
 @router.get("/messages/{other_user_id}")
 def get_messages(other_user_id: str, user_id: str = Depends(get_current_user)):

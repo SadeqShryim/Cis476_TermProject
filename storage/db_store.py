@@ -68,6 +68,17 @@ class NotificationModel(Base):
     read = Column(Boolean)
     timestamp = Column(String)
 
+class ReviewModel(Base):
+    __tablename__ = "reviews"
+    id = Column(String, primary_key=True, index=True)
+    booking_id = Column(String, index=True)
+    reviewer_id = Column(String, index=True)
+    reviewed_id = Column(String, index=True)
+    reviewed_role = Column(String)
+    rating = Column(Integer)
+    comment = Column(String)
+    created_at = Column(String)
+
 class TestModel(Base):
     __tablename__ = "tests"
     id = Column(String, primary_key=True, index=True)
@@ -81,6 +92,7 @@ TABLE_MAP = {
     "bookings.json": BookingModel,
     "messages.json": MessageModel,
     "notifications.json": NotificationModel,
+    "reviews.json": ReviewModel,
     "test.json": TestModel
 }
 
