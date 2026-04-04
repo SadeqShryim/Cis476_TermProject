@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(mkdir -p api patterns context hooks components/layout components/cars components/bookings components/notifications components/messages components/reviews components/payments components/shared pages)",
+      "Bash(rm -f App.css)",
+      "Bash(npx vite:*)"
+    ]
+  }
+}
