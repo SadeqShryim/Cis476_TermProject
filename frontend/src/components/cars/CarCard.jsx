@@ -6,14 +6,15 @@ import { useState } from 'react';
 import { Car, MapPin, Calendar, DollarSign, Eye, MessageSquare } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
-export default function CarCard({ car, onBook, onWatch, onMessage, onEdit, onDelete }) {
+export default function CarCard({ car, isWatched, onBook, onWatch, onMessage, onEdit, onDelete }) {
   const { user } = useAuth();
   const isOwner = user?.id === car.owner_id;
   const [showWatchForm, setShowWatchForm] = useState(false);
   const [maxPrice, setMaxPrice] = useState('');
 
   function handleWatch() {
-    onWatch(car.id, maxPrice ? parseFloat(maxPrice) : null);
+    if (!maxPrice) return;
+    onWatch(car.id, parseFloat(maxPrice));
     setShowWatchForm(false);
     setMaxPrice('');
   }
@@ -62,24 +63,30 @@ export default function CarCard({ car, onBook, onWatch, onMessage, onEdit, onDel
           </button>
         )}
         {!isOwner && onWatch && (
-          <>
-            {!showWatchForm ? (
-              <button onClick={() => setShowWatchForm(true)}
-                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium border border-purple-300 text-purple-700 rounded-lg hover:bg-purple-50">
-                <Eye size={12} /> Watch
-              </button>
-            ) : (
-              <div className="flex items-center gap-1">
-                <input type="number" placeholder="Max price" value={maxPrice}
-                  onChange={e => setMaxPrice(e.target.value)}
-                  className="w-24 px-2 py-1 text-xs border border-gray-300 rounded" />
-                <button onClick={handleWatch}
-                  className="px-2 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700">OK</button>
-                <button onClick={() => setShowWatchForm(false)}
-                  className="px-2 py-1 text-xs text-gray-500 hover:text-gray-700">Cancel</button>
-              </div>
-            )}
-          </>
+          isWatched ? (
+            <span className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg">
+              <Eye size={12} /> Watching
+            </span>
+          ) : (
+            <>
+              {!showWatchForm ? (
+                <button onClick={() => setShowWatchForm(true)}
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium border border-purple-300 text-purple-700 rounded-lg hover:bg-purple-50">
+                  <Eye size={12} /> Watch
+                </button>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <input type="number" placeholder="Target price" value={maxPrice} required
+                    onChange={e => setMaxPrice(e.target.value)}
+                    className="w-24 px-2 py-1 text-xs border border-gray-300 rounded" />
+                  <button onClick={handleWatch}
+                    className="px-2 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700">OK</button>
+                  <button onClick={() => setShowWatchForm(false)}
+                    className="px-2 py-1 text-xs text-gray-500 hover:text-gray-700">Cancel</button>
+                </div>
+              )}
+            </>
+          )
         )}
         {!isOwner && onMessage && (
           <button onClick={() => onMessage(car.owner_id)}

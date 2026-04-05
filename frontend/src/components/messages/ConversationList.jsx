@@ -49,7 +49,7 @@ export default function ConversationList({ selectedUserId, onSelect }) {
               )}
             </div>
             {c.last_message && (
-              <p className="text-xs text-gray-500 mt-1 truncate">{c.last_message}</p>
+              <p className="text-xs text-gray-500 mt-1 truncate">{typeof c.last_message === 'string' ? c.last_message : c.last_message.content}</p>
             )}
           </button>
         ))

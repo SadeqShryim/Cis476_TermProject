@@ -22,7 +22,7 @@ export default function ProfilePage() {
         api.get(`/reviews/user/${user?.id}`),
       ]);
       if (profileRes.ok) setProfile(profileRes.data);
-      if (reviewsRes.ok) setReviews(reviewsRes.data);
+      if (reviewsRes.ok) setReviews(Array.isArray(reviewsRes.data) ? reviewsRes.data : reviewsRes.data.reviews ?? []);
       setLoading(false);
     }
     load();

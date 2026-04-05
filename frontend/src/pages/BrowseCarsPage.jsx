@@ -18,15 +18,22 @@ import LoadingSpinner from '../components/shared/LoadingSpinner';
 export default function BrowseCarsPage() {
   const navigate = useNavigate();
   const [cars, setCars] = useState([]);
+  const [watchedIds, setWatchedIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [bookingCar, setBookingCar] = useState(null);
+
+  const fetchWatched = useCallback(async () => {
+    const { ok, data } = await api.get('/user/watched');
+    if (ok) setWatchedIds(new Set(data.map(w => (w.car || w).id)));
+  }, []);
 
   const fetchCars = useCallback(async () => {
     setLoading(true);
     const { ok, data } = await api.get('/cars/');
     if (ok) setCars(data);
+    await fetchWatched();
     setLoading(false);
-  }, []);
+  }, [fetchWatched]);
 
   // Register as CarList colleague to receive refresh events
   useColleague('CarList', (event) => {
@@ -41,14 +48,13 @@ export default function BrowseCarsPage() {
   async function handleSearch(filters) {
     setLoading(true);
     const { ok, data } = await api.post('/bookings/search', filters);
-    if (ok) setCars(data);
+    if (ok) setCars(Array.isArray(data) ? data : data.results ?? []);
     setLoading(false);
   }
 
-  async function handleWatch(carId, maxPrice) {
-    const body = { car_id: carId };
-    if (maxPrice) body.max_price = maxPrice;
-    await api.post('/user/watch', body);
+  async function handleWatch(carId, targetPrice) {
+    const { ok } = await api.post('/user/watch', { car_id: carId, target_price: targetPrice });
+    if (ok) setWatchedIds(prev => new Set(prev).add(carId));
   }
 
   if (loading) return <LoadingSpinner />;
@@ -63,6 +69,7 @@ export default function BrowseCarsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {cars.map(car => (
             <CarCard key={car.id} car={car}
+              isWatched={watchedIds.has(car.id)}
               onBook={setBookingCar}
               onWatch={handleWatch}
               onMessage={(ownerId) => navigate(`/dashboard/messages/${ownerId}`)}
