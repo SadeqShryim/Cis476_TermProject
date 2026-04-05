@@ -19,7 +19,6 @@ class SearchQueryModel(BaseModel):
 
 class BookCarModel(BaseModel):
     car_id: str
-    owner_id: str
     start_date: str
     end_date: str
 
