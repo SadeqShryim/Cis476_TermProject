@@ -1,0 +1,64 @@
+@startuml builder_pattern
+title Builder Pattern — Car Listing Construction
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+package "patterns.builder" {
+  class CarListingBuilder <<Builder>> {
+    - _owner_id, _make, _model, _year
+    - _mileage, _daily_price, _location
+    - _features : List
+    - _availability : List
+    --
+    + reset()
+    + set_owner(owner_id)
+    + set_make(make)
+    + set_model(model)
+    + set_year(year)
+    + set_mileage(mileage)
+    + set_daily_price(price)
+    + set_location(location)
+    + add_feature(feature)
+    + add_availability(start, end)
+    + validate()
+    + build() : dict
+  }
+}
+
+package "models.car" {
+  class "create_car(...)" as create_car <<Product Factory>> {
+    returns car listing **dict**
+  }
+}
+
+package "api.routes.cars" {
+  class "POST /cars\ncreate_listing()" as create_route <<Director>> {
+    instantiates **CarListingBuilder**
+    fluent method calls
+    **build()**
+  }
+}
+
+package "services.car_service" {
+  class "create_listing(car_data)" as car_create_svc {
+    persists dict to **cars.json**
+  }
+}
+
+CarListingBuilder ..> create_car : **build()** calls
+create_route ..> CarListingBuilder : **uses**
+create_route ..> car_create_svc : **create_listing**(built dict)
+
+note right of CarListingBuilder
+  **Pattern Role Mapping**
+  **Builder** → **CarListingBuilder**
+  **Product** → car listing **dict** (from **create_car**)
+  **Director** → **api/routes/cars.py** (orchestrates build steps)
+  --
+  Fluent interface: each setter returns **self**.
+  **validate()** ensures required fields are set.
+  **build()** calls **create_car()** to produce final dict.
+end note
+
+@enduml

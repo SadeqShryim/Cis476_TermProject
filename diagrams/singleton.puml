@@ -1,0 +1,45 @@
+@startuml singleton_pattern
+title Singleton Pattern — Session Management
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+package "patterns.singleton" {
+  class SessionManager <<Singleton>> {
+    {static} - _instance : SessionManager
+    - _current_user : dict
+    --
+    + {static} __new__(cls)
+    + login(user)
+    + logout()
+    + get_current_user() : dict
+    + is_authenticated() : bool
+    + update_user(updates)
+    + refresh()
+    + {static} reset()
+  }
+}
+
+package "services.auth_service" {
+  class "login() / logout() / ..." as auth_svc <<Client>>
+}
+
+package "api.routes.auth" {
+  class "login / logout endpoints" as api_auth <<Client>>
+}
+
+SessionManager <.. auth_svc : **SessionManager()**
+SessionManager <.. api_auth : **SessionManager()**
+
+note right of SessionManager
+  **Pattern Role Mapping**
+  **Singleton** → **SessionManager**
+  --
+  **__new__** ensures only one instance exists.
+  All callers receive the same **_instance**.
+  Tracks **_current_user** across the entire application.
+  --
+  **reset()** clears the singleton (used for testing).
+end note
+
+@enduml

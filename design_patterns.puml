@@ -1,0 +1,332 @@
+@startuml design_patterns_overview
+title DriveShare / Cis476 Term Project — Design patterns overview
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+legend right
+  **Legend**
+  GoF role labels use stereotypes (<<...>>).
+  Solid arrows: code dependency / composition.
+  Dashed arrows: creates, calls, or integrates at runtime.
+endlegend
+
+note as N1
+  **Source of truth**
+  Backend: **patterns/** + **services/** + **api/routes/**
+  Frontend: **frontend/src/patterns/mediator.js**, **frontend/src/hooks/useColleague.js**,
+  and React components that call **useColleague(name, handler)**.
+end note
+
+@enduml
+
+
+' =============================================================================
+' OBSERVER (backend)
+' =============================================================================
+@startuml pattern_observer
+title Observer — car listing changes notify renters who watch a car
+
+skinparam classAttributeIconSize 0
+
+package "patterns.observer" {
+  class CarSubject <<Subject>> {
+    - _observers : List
+    + attach(observer)
+    + detach(observer)
+    + detach_by_user(user_id)
+    + notify(car_data, change_type)
+  }
+
+  class WatcherObserver <<Observer>> {
+    + user_id
+    + max_price, desired_start, desired_end
+    + callback
+    + update(car_data, change_type)
+  }
+
+  class WatchManager {
+    - _subjects : Map<car_id, CarSubject>
+    + get_or_create_subject(car_id)
+    + add_watcher(car_id, observer)
+    + remove_watcher(car_id, user_id)
+    + notify_car_change(car_id, car_data, change_type)
+  }
+}
+
+package "services" {
+  class "car_service\n(module)" as car_service_mod {
+    .. global ..
+    **watch_manager** : WatchManager
+    --
+    + update_listing(...)  '' calls notify on price/availability
+  }
+
+  class "watch_service\n(module)" as watch_service_mod {
+    + watch_car(user_id, car_id, ...)
+    + unwatch_car(...)
+    + restore_watchers()
+  }
+}
+
+package "services.notification_service" {
+  class "add_notification(...)" as add_notif <<callback target>>
+}
+
+WatchManager "1" o-- "0..*" CarSubject : manages
+CarSubject "1" o-- "0..*" WatcherObserver : notifies
+
+watch_service_mod ..> WatcherObserver : **creates** (with callback)
+watch_service_mod ..> car_service_mod : **imports** watch_manager
+WatcherObserver ..> add_notif : **callback**(user_id, message)\nfrom _make_callback()
+
+note right of CarSubject
+  **Mapping**
+  **Subject** → **CarSubject** (one per watched car_id).
+  **Observer** → **WatcherObserver** (one per user watching that car).
+  **ConcreteSubject** is not a separate class; **WatchManager**
+  holds **CarSubject** instances keyed by car id.
+end note
+
+note bottom of watch_service_mod
+  **Persistence**: watcher criteria stored on **cars.json**;
+  **restore_watchers()** rebuilds **WatcherObserver** instances on startup.
+end note
+
+@enduml
+
+
+' =============================================================================
+' MEDIATOR (frontend)
+' =============================================================================
+@startuml pattern_mediator
+title Mediator — UI components communicate via DriveShareMediator
+
+skinparam classAttributeIconSize 0
+
+package "frontend/src/patterns/mediator.js" {
+  class Colleague <<Colleague (abstract)>> {
+    # name : string
+    # mediator : DriveShareMediator
+    + send(event, data)
+    + receive(event, data)
+  }
+
+  class DriveShareMediator <<ConcreteMediator>> {
+    - _colleagues : Map<name, Colleague>
+    - _eventLog
+    + register(colleague)
+    + unregister(name)
+    + notify(senderName, event, data)
+    + getEventLog()
+  }
+
+  note right of DriveShareMediator
+    **EVENTS** and **ROUTING_TABLE** live in the same module:
+    each event maps to colleague **names** that should **receive** it.
+    **USER_LOGGED_OUT** broadcasts to all registered colleagues.
+  end note
+}
+
+package "frontend/src/hooks/useColleague.js" {
+  class ComponentColleague <<ConcreteColleague>> {
+    - _handler
+    + receive(event, data)
+  }
+}
+
+package "frontend/src/context/MediatorContext.jsx" {
+  class "MediatorProvider / useMediator()" as MediatorCtx
+}
+
+Colleague <|-- ComponentColleague
+ComponentColleague --> DriveShareMediator : mediator.notify(...)
+DriveShareMediator ..> Colleague : routes to **receive()**
+
+MediatorCtx ..> DriveShareMediator : provides singleton\nmediator to tree
+
+note as NCol
+  **Concrete colleague instances (string names in code)**
+  Registered via **useColleague('Name', handler)** — names must match
+  **ROUTING_TABLE** keys where that component should receive events.
+  --
+  **Receivers / senders (examples)**:
+  **NotificationBell**, **BalanceDisplay**, **CarList**, **WatchList**,
+  **BookingList**, **ConversationList**, **MyCarsOwnerList**;
+  event-only senders include **PaymentButton**, **BookingModal**, **CarForm**,
+  **ChatWindow**, **ReviewForm** (they still use **useColleague** to **send**).
+end note
+
+ComponentColleague .. NCol
+
+@enduml
+
+
+' =============================================================================
+' CHAIN OF RESPONSIBILITY (backend)
+' =============================================================================
+@startuml pattern_chain_of_responsibility
+title Chain of Responsibility — password recovery security questions
+
+skinparam classAttributeIconSize 0
+
+package "patterns.chain_of_responsibility" {
+  class SecurityQuestionHandler <<Handler>> {
+    - _question_index : int
+    - _next_handler : SecurityQuestionHandler
+    + set_next(handler) : Handler
+    + handle(user, answers) : bool
+  }
+}
+
+package "patterns.chain_of_responsibility" as factory {
+  class "build_security_chain()" as build_chain <<factory>> {
+    returns first handler in chain
+  }
+}
+
+package "services.auth_service" {
+  class "recover_password(email, answers, new_password)" as recover_pw {
+    uses **build_security_chain()**
+    then **chain.handle(user, answers)**
+  }
+}
+
+SecurityQuestionHandler "1" --> "0..1" SecurityQuestionHandler : _next_handler
+build_chain ..> SecurityQuestionHandler : **chains** handler[0]→[1]→[2]
+recover_pw ..> build_chain : **calls**
+
+note bottom of SecurityQuestionHandler
+  **Mapping**
+  **Handler** → **SecurityQuestionHandler** (one link per question index).
+  **successor** → **set_next** / **_next_handler**.
+  Client → **auth_service.recover_password** starts the chain via **build_security_chain()**.
+end note
+
+@enduml
+
+
+' =============================================================================
+' PROXY (backend)
+' =============================================================================
+@startuml pattern_proxy
+title Proxy — payment validation, logging, delegation
+
+skinparam classAttributeIconSize 0
+
+package "patterns.proxy" {
+  class RealPaymentService <<RealSubject>> {
+    + process(renter_id, owner_id, amount)
+  }
+
+  class PaymentProxy <<Proxy>> {
+    - _real_service : RealPaymentService
+    - _transaction_log
+    + process_payment(renter_id, owner_id, amount, booking_id?)
+    + get_transaction_log()
+    - _log_transaction(...)
+  }
+}
+
+package "services.payment_service" {
+  class "process_payment(...)" as pay_svc <<Client API>> {
+    delegates to module-level\n**_payment_proxy**
+  }
+}
+
+PaymentProxy o-- RealPaymentService : delegates **process()**
+pay_svc ..> PaymentProxy : **process_payment()**
+
+note right of PaymentProxy
+  **Proxy responsibilities** (actual code):
+  validate amount & balance → delegate **RealPaymentService.process** →
+  log transaction → on success create **notifications** and optional **booking** paid flag.
+end note
+
+@enduml
+
+
+' =============================================================================
+' SINGLETON (backend)
+' =============================================================================
+@startuml pattern_singleton
+title Singleton — single SessionManager for current user session
+
+skinparam classAttributeIconSize 0
+
+package "patterns.singleton" {
+  class SessionManager <<Singleton>> {
+    {static} _instance
+    + login(user)
+    + logout()
+    + get_current_user()
+    + is_authenticated()
+    + update_user(updates)
+    + refresh()
+    {static} reset()
+  }
+}
+
+package "Integration" {
+  class "auth_service.login / logout / ..." as auth_int
+  class "api.routes.auth (SessionManager)" as api_auth
+}
+
+SessionManager <-- auth_int : **SessionManager()**
+SessionManager <-- api_auth : **SessionManager()**
+
+note right of SessionManager
+  **__new__** ensures a single instance; all callers share **\_current_user**.
+end note
+
+@enduml
+
+
+' =============================================================================
+' BUILDER (backend)
+' =============================================================================
+@startuml pattern_builder
+title Builder — stepwise construction of car listing dict
+
+skinparam classAttributeIconSize 0
+
+package "patterns.builder" {
+  class CarListingBuilder <<Builder>> {
+    + set_owner(owner_id)
+    + set_make / set_model / set_year / ...
+    + add_feature(feature)
+    + add_availability(start, end)
+    + validate()
+    + build() : car dict
+  }
+}
+
+package "models.car" {
+  class "create_car(...)" as create_car <<Product factory>> {
+    returns listing **dict**
+  }
+}
+
+package "api.routes.cars" {
+  class "POST /cars create_listing" as create_route {
+    instantiates **CarListingBuilder**,\nfluent calls,\n**build()**
+  }
+}
+
+package "services.car_service" {
+  class "create_listing(car_data)" as car_create_svc {
+    persists dict to **cars.json**
+  }
+}
+
+CarListingBuilder ..> create_car : **build()** calls
+create_route ..> CarListingBuilder : **uses**
+create_route ..> car_create_svc : **create_listing**(built dict)
+
+note right of CarListingBuilder
+  **Mapping**
+  **Builder** → **CarListingBuilder**
+  **Product** → car listing **dict** from **create_car** (not a separate class).
+  **Director** is not implemented; **api/routes/cars.py** orchestrates steps.
+end note
+
+@enduml

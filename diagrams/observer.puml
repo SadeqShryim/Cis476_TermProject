@@ -1,0 +1,73 @@
+@startuml observer_pattern
+title Observer Pattern — Car Watch System
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+package "patterns.observer" {
+  class CarSubject <<Subject>> {
+    - _observers : List
+    + attach(observer)
+    + detach(observer)
+    + detach_by_user(user_id)
+    + notify(car_data, change_type)
+  }
+
+  class WatcherObserver <<Observer>> {
+    + user_id
+    + max_price
+    + desired_start
+    + desired_end
+    + callback
+    + update(car_data, change_type)
+  }
+
+  class WatchManager {
+    - _subjects : Map<car_id, CarSubject>
+    + get_or_create_subject(car_id)
+    + add_watcher(car_id, observer)
+    + remove_watcher(car_id, user_id)
+    + notify_car_change(car_id, car_data, change_type)
+  }
+}
+
+package "services" {
+  class "car_service\n(module)" as car_service_mod {
+    .. global ..
+    **watch_manager** : WatchManager
+    --
+    + update_listing(...)
+  }
+
+  class "watch_service\n(module)" as watch_service_mod {
+    + watch_car(user_id, car_id, ...)
+    + unwatch_car(...)
+    + restore_watchers()
+  }
+}
+
+package "services.notification_service" {
+  class "add_notification(...)" as add_notif <<callback target>>
+}
+
+WatchManager "1" o-- "0..*" CarSubject : manages
+CarSubject "1" o-- "0..*" WatcherObserver : notifies
+
+watch_service_mod ..> WatcherObserver : **creates** (with callback)
+watch_service_mod ..> car_service_mod : **imports** watch_manager
+WatcherObserver ..> add_notif : **callback**(user_id, message)\nfrom _make_callback()
+
+note right of CarSubject
+  **Pattern Role Mapping**
+  **Subject** → **CarSubject** (one per watched car_id)
+  **Observer** → **WatcherObserver** (one per user watching that car)
+  **ConcreteSubject** is not a separate class;
+  **WatchManager** holds **CarSubject** instances keyed by car id.
+end note
+
+note bottom of watch_service_mod
+  **Persistence**: watcher criteria stored on **cars.json**;
+  **restore_watchers()** rebuilds **WatcherObserver** instances on startup.
+end note
+
+@enduml

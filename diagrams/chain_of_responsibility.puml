@@ -1,0 +1,44 @@
+@startuml chain_of_responsibility_pattern
+title Chain of Responsibility Pattern — Password Recovery
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+package "patterns.chain_of_responsibility" {
+  class SecurityQuestionHandler <<Handler>> {
+    - _question_index : int
+    - _next_handler : SecurityQuestionHandler
+    + set_next(handler) : Handler
+    + handle(user, answers) : bool
+  }
+
+  class "build_security_chain()" as build_chain <<Factory Function>> {
+    returns first handler in chain
+  }
+}
+
+package "services.auth_service" {
+  class "recover_password(email, answers, new_password)" as recover_pw <<Client>> {
+    uses **build_security_chain()**
+    then **chain.handle(user, answers)**
+  }
+}
+
+SecurityQuestionHandler "1" --> "0..1" SecurityQuestionHandler : _next_handler
+
+build_chain ..> SecurityQuestionHandler : **chains**\nhandler[0] → handler[1] → handler[2]
+recover_pw ..> build_chain : **calls**
+
+note bottom of SecurityQuestionHandler
+  **Pattern Role Mapping**
+  **Handler** → **SecurityQuestionHandler** (one link per question index)
+  **successor** → **set_next()** / **_next_handler**
+  **Client** → **auth_service.recover_password**
+  --
+  Chain built by **build_security_chain()** with 3 handlers.
+  Each handler verifies one security question answer.
+  If all pass → password reset allowed.
+  If any fail → chain stops, recovery denied.
+end note
+
+@enduml

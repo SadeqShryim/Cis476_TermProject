@@ -1,0 +1,46 @@
+@startuml proxy_pattern
+title Proxy Pattern — Payment Processing
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+package "patterns.proxy" {
+  class RealPaymentService <<RealSubject>> {
+    + process(renter_id, owner_id, amount)
+  }
+
+  class PaymentProxy <<Proxy>> {
+    - _real_service : RealPaymentService
+    - _transaction_log : List
+    + process_payment(renter_id, owner_id, amount, booking_id?)
+    + get_transaction_log()
+    - _log_transaction(...)
+  }
+}
+
+package "services.payment_service" {
+  class "process_payment(...)" as pay_svc <<Client API>> {
+    delegates to module-level\n**_payment_proxy**
+  }
+}
+
+PaymentProxy o-- RealPaymentService : delegates **process()**
+pay_svc ..> PaymentProxy : **process_payment()**
+
+note right of PaymentProxy
+  **Pattern Role Mapping**
+  **Subject (interface)** → implicit (process payment operation)
+  **RealSubject** → **RealPaymentService**
+  **Proxy** → **PaymentProxy**
+  --
+  **Proxy responsibilities**:
+  1. Validate payment amount (> 0)
+  2. Validate renter has sufficient balance
+  3. Log transaction attempt
+  4. Delegate to **RealPaymentService.process()**
+  5. Log transaction result
+  6. Create notifications for renter and owner
+  7. Mark booking as paid (if booking_id provided)
+end note
+
+@enduml
