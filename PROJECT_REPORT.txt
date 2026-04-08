@@ -1,0 +1,1024 @@
+# DriveShare — Peer-to-Peer Car Rental Platform
+## CIS 476 Term Project Report
+
+---
+
+## Table of Contents
+
+1. [Project Overview](#1-project-overview)
+2. [Class Diagrams (PlantUML)](#2-class-diagrams-plantuml)
+   - 2.1 Domain Models
+   - 2.2 Design Patterns
+3. [Database Schema](#3-database-schema)
+4. [User Interface Screenshots](#4-user-interface-screenshots)
+5. [References](#5-references)
+
+---
+
+## 1. Project Overview
+
+**DriveShare** is a peer-to-peer car rental platform inspired by Turo.com. The application allows car owners to list their vehicles for rent and renters to search, book, and pay for rentals. The system implements six design patterns and features a React frontend with a Python/FastAPI backend using SQLite for persistence.
+
+### Key Features
+- User registration and authentication with SHA-256 password hashing
+- Security questions for password recovery (Chain of Responsibility pattern)
+- Car listing management with Builder pattern
+- Search and booking with overlap prevention
+- Watch system for price drop notifications (Observer pattern)
+- In-app messaging between users
+- Simulated payment processing (Proxy pattern)
+- Session management (Singleton pattern)
+- UI component coordination (Mediator pattern)
+
+---
+
+## 2. Class Diagrams (PlantUML)
+
+### 2.1 Domain Models
+
+#### 2.1.1 Core Domain Model Diagram
+
+```plantuml
+@startuml domain_models
+title DriveShare — Core Domain Models
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+package "models" {
+  class User {
+    + id : string (UUID)
+    + email : string
+    + password_hash : string
+    + security_questions : List[SecurityQuestion]
+    + balance : float (default: 1000.00)
+    + created_at : string (ISO timestamp)
+  }
+
+  class SecurityQuestion {
+    + question : string
+    + answer : string
+  }
+
+  class Car {
+    + id : string (UUID)
+    + owner_id : string (FK → User)
+    + make : string
+    + model : string
+    + year : int
+    + mileage : int
+    + daily_price : float
+    + location : string
+    + features : List[string]
+    + availability : List[AvailabilityWindow]
+    + watchers : List[string]
+    + is_active : bool
+    + created_at : string (ISO timestamp)
+  }
+
+  class AvailabilityWindow {
+    + start : string (YYYY-MM-DD)
+    + end : string (YYYY-MM-DD)
+  }
+
+  class Booking {
+    + id : string (UUID)
+    + car_id : string (FK → Car)
+    + renter_id : string (FK → User)
+    + owner_id : string (FK → User)
+    + start_date : string (YYYY-MM-DD)
+    + end_date : string (YYYY-MM-DD)
+    + total_price : float
+    + status : string (confirmed|cancelled)
+    + paid : bool
+    + created_at : string (ISO timestamp)
+  }
+
+  class Message {
+    + id : string (UUID)
+    + sender_id : string (FK → User)
+    + receiver_id : string (FK → User)
+    + content : string
+    + timestamp : string (ISO timestamp)
+    + read : bool
+  }
+
+  class Notification {
+    + id : string (UUID)
+    + user_id : string (FK → User)
+    + content : string
+    + type : string (general|booking|payment|watch|message)
+    + timestamp : string (ISO timestamp)
+    + read : bool
+  }
+
+  class Review {
+    + id : string (UUID)
+    + booking_id : string (FK → Booking)
+    + reviewer_id : string (FK → User)
+    + reviewed_id : string (FK → User)
+    + reviewed_role : string (owner|renter)
+    + rating : int (1-5)
+    + comment : string
+    + created_at : string (ISO timestamp)
+  }
+}
+
+User "1" --> "3" SecurityQuestion : has
+User "1" --> "0..*" Car : owns
+User "1" --> "0..*" Booking : rents (as renter)
+User "1" --> "0..*" Booking : receives (as owner)
+User "1" --> "0..*" Message : sends
+User "1" --> "0..*" Message : receives
+User "1" --> "0..*" Notification : has
+User "1" --> "0..*" Review : writes
+User "1" --> "0..*" Review : receives
+
+Car "1" --> "0..*" AvailabilityWindow : has
+Car "1" --> "0..*" Booking : booked in
+
+Booking "1" --> "0..*" Review : generates
+
+@enduml
+```
+
+**Description:** The Core Domain Model diagram illustrates the main entities in the DriveShare system and their relationships:
+- **User**: Central entity representing both car owners and renters. Each user has 3 security questions for password recovery and a starting balance of $1,000.
+- **Car**: Represents a vehicle listing with details like make, model, year, pricing, and availability windows. Linked to its owner and can have multiple watchers (users monitoring price changes).
+- **Booking**: Captures a rental transaction between a renter and owner for a specific car and date range. Tracks payment status.
+- **Message**: Enables direct communication between users (typically renter and owner).
+- **Notification**: System-generated alerts for bookings, payments, price drops, and messages.
+- **Review**: Post-rental feedback where renters review owners and vice versa.
+
+---
+
+### 2.2 Design Patterns
+
+#### 2.2.1 Singleton Pattern — Session Management
+
+```plantuml
+@startuml singleton_pattern
+title Singleton Pattern — Session Management
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+package "patterns.singleton" {
+  class SessionManager <<Singleton>> {
+    {static} - _instance : SessionManager
+    - _current_user : dict
+    --
+    + {static} __new__(cls)
+    + login(user)
+    + logout()
+    + get_current_user() : dict
+    + is_authenticated() : bool
+    + update_user(updates)
+    + refresh()
+    + {static} reset()
+  }
+}
+
+package "services.auth_service" {
+  class "login() / logout() / ..." as auth_svc <<Client>>
+}
+
+package "api.routes.auth" {
+  class "login / logout endpoints" as api_auth <<Client>>
+}
+
+SessionManager <.. auth_svc : **SessionManager()**
+SessionManager <.. api_auth : **SessionManager()**
+
+note right of SessionManager
+  **Pattern Role Mapping**
+  **Singleton** → **SessionManager**
+  --
+  **__new__** ensures only one instance exists.
+  All callers receive the same **_instance**.
+  Tracks **_current_user** across the entire application.
+  --
+  **reset()** clears the singleton (used for testing).
+end note
+
+@enduml
+```
+
+**Description:** The Singleton pattern ensures only one `SessionManager` instance exists throughout the application lifecycle. This is critical for maintaining consistent user session state across all components. The `__new__` method intercepts object creation and returns the existing instance if one already exists. Key operations include `login()` to set the current user, `logout()` to clear the session, and `refresh()` to reload user data from storage (useful after balance changes from payments).
+
+---
+
+#### 2.2.2 Observer Pattern — Car Watch System
+
+```plantuml
+@startuml observer_pattern
+title Observer Pattern — Car Watch System
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+package "patterns.observer" {
+  class CarSubject <<Subject>> {
+    - _observers : List
+    + attach(observer)
+    + detach(observer)
+    + detach_by_user(user_id)
+    + notify(car_data, change_type)
+  }
+
+  class WatcherObserver <<Observer>> {
+    + user_id : string
+    + max_price : float
+    + desired_start : string
+    + desired_end : string
+    + callback : function
+    + update(car_data, change_type)
+  }
+
+  class WatchManager {
+    - _subjects : Map<car_id, CarSubject>
+    + get_or_create_subject(car_id)
+    + add_watcher(car_id, observer)
+    + remove_watcher(car_id, user_id)
+    + notify_car_change(car_id, car_data, change_type)
+  }
+}
+
+package "services" {
+  class "car_service" as car_service_mod {
+    .. global ..
+    **watch_manager** : WatchManager
+    --
+    + update_listing(...)
+  }
+
+  class "watch_service" as watch_service_mod {
+    + watch_car(user_id, car_id, ...)
+    + unwatch_car(...)
+    + restore_watchers()
+  }
+}
+
+package "services.notification_service" {
+  class "add_notification(...)" as add_notif <<callback target>>
+}
+
+WatchManager "1" o-- "0..*" CarSubject : manages
+CarSubject "1" o-- "0..*" WatcherObserver : notifies
+
+watch_service_mod ..> WatcherObserver : **creates**
+WatcherObserver ..> add_notif : **callback**
+
+note right of CarSubject
+  **Pattern Role Mapping**
+  **Subject** → **CarSubject**
+  **Observer** → **WatcherObserver**
+  --
+  When a car's price drops or availability
+  changes, all watchers are notified via
+  their registered callback function.
+end note
+
+@enduml
+```
+
+**Description:** The Observer pattern implements the "Watch" feature where renters can subscribe to car listings and receive notifications when prices drop or availability changes. Each `CarSubject` maintains a list of `WatcherObserver` instances. When `car_service.update_listing()` detects a price drop, it calls `WatchManager.notify_car_change()`, which triggers the `update()` method on all observers. Each observer evaluates the change against their criteria (e.g., `max_price`) and uses a callback to create a notification if the criteria are met.
+
+---
+
+#### 2.2.3 Builder Pattern — Car Listing Construction
+
+```plantuml
+@startuml builder_pattern
+title Builder Pattern — Car Listing Construction
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+package "patterns.builder" {
+  class CarListingBuilder <<Builder>> {
+    - _owner_id : string
+    - _make : string
+    - _model : string
+    - _year : int
+    - _mileage : int
+    - _daily_price : float
+    - _location : string
+    - _features : List[string]
+    - _availability : List[dict]
+    --
+    + reset() : self
+    + set_owner(owner_id) : self
+    + set_make(make) : self
+    + set_model(model) : self
+    + set_year(year) : self
+    + set_mileage(mileage) : self
+    + set_daily_price(price) : self
+    + set_location(location) : self
+    + add_feature(feature) : self
+    + add_availability(start, end) : self
+    + validate() : bool
+    + build() : dict
+  }
+}
+
+package "models.car" {
+  class "create_car(...)" as create_car <<Product Factory>> {
+    returns car listing **dict**
+  }
+}
+
+package "api.routes.cars" {
+  class "POST /cars" as create_route <<Director>> {
+    instantiates CarListingBuilder
+    fluent method calls
+    build()
+  }
+}
+
+package "services.car_service" {
+  class "create_listing(car_data)" as car_create_svc {
+    persists dict to database
+  }
+}
+
+CarListingBuilder ..> create_car : **build()** calls
+create_route ..> CarListingBuilder : **uses**
+create_route ..> car_create_svc : **create_listing**
+
+note right of CarListingBuilder
+  **Pattern Role Mapping**
+  **Builder** → **CarListingBuilder**
+  **Product** → car listing **dict**
+  **Director** → API route handler
+  --
+  Fluent interface: each setter returns **self**.
+  **validate()** ensures required fields are set.
+  **build()** calls **create_car()** to produce final dict.
+end note
+
+@enduml
+```
+
+**Description:** The Builder pattern provides a step-by-step, fluent interface for constructing complex car listing objects. This is beneficial because car listings have many optional fields (features, availability windows) and required fields (make, model, year, price, location). The `CarListingBuilder` accumulates field values through chained setter calls, validates that all required fields are present via `validate()`, and finally produces the car dictionary via `build()`. The API route acts as the "Director" that orchestrates the build process based on user input.
+
+---
+
+#### 2.2.4 Proxy Pattern — Payment Processing
+
+```plantuml
+@startuml proxy_pattern
+title Proxy Pattern — Payment Processing
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+package "patterns.proxy" {
+  class RealPaymentService <<RealSubject>> {
+    + process(renter_id, owner_id, amount) : dict
+  }
+
+  class PaymentProxy <<Proxy>> {
+    - _real_service : RealPaymentService
+    - _transaction_log : List[dict]
+    --
+    + process_payment(renter_id, owner_id, amount, booking_id?) : dict
+    + get_transaction_log() : List[dict]
+    - _log_transaction(...)
+  }
+}
+
+package "services.payment_service" {
+  class "process_payment(...)" as pay_svc <<Client API>> {
+    delegates to **PaymentProxy**
+  }
+}
+
+package "storage.db_store" {
+  class "update(...)" as db_update {
+    updates user balances
+  }
+}
+
+PaymentProxy o-- RealPaymentService : delegates
+pay_svc ..> PaymentProxy : **process_payment()**
+RealPaymentService ..> db_update : modifies balances
+
+note right of PaymentProxy
+  **Pattern Role Mapping**
+  **RealSubject** → **RealPaymentService**
+  **Proxy** → **PaymentProxy**
+  --
+  **Proxy responsibilities**:
+  1. Validate payment amount (> 0)
+  2. Validate renter has sufficient balance
+  3. Log transaction attempt
+  4. Delegate to **RealPaymentService**
+  5. Log transaction result
+  6. Create notifications for both parties
+  7. Mark booking as paid
+end note
+
+@enduml
+```
+
+**Description:** The Proxy pattern adds validation, logging, and notification layers around the payment processing logic. The `PaymentProxy` acts as a gatekeeper: it first validates that the payment amount is positive and that the renter has sufficient balance. If validation passes, it delegates to `RealPaymentService.process()` which performs the actual balance transfers. The proxy then logs the transaction (success or failure), creates notifications for both renter and owner, and marks the associated booking as paid. This separation of concerns keeps the core payment logic simple while adding cross-cutting concerns transparently.
+
+---
+
+#### 2.2.5 Chain of Responsibility Pattern — Password Recovery
+
+```plantuml
+@startuml chain_of_responsibility_pattern
+title Chain of Responsibility Pattern — Password Recovery
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+package "patterns.chain_of_responsibility" {
+  class SecurityQuestionHandler <<Handler>> {
+    - _question_index : int
+    - _next_handler : SecurityQuestionHandler
+    --
+    + set_next(handler) : Handler
+    + handle(user, answers) : bool
+  }
+
+  class "build_security_chain()" as build_chain <<Factory Function>> {
+    returns first handler in chain
+  }
+}
+
+package "services.auth_service" {
+  class "recover_password(...)" as recover_pw <<Client>> {
+    uses build_security_chain()
+    calls chain.handle(user, answers)
+  }
+}
+
+SecurityQuestionHandler "1" --> "0..1" SecurityQuestionHandler : _next_handler
+
+build_chain ..> SecurityQuestionHandler : **chains**\nhandler[0] → handler[1] → handler[2]
+recover_pw ..> build_chain : **calls**
+
+note bottom of SecurityQuestionHandler
+  **Pattern Role Mapping**
+  **Handler** → **SecurityQuestionHandler**
+  **Client** → **auth_service.recover_password**
+  --
+  Chain of 3 handlers, one per security question.
+  Each handler verifies one answer.
+  If answer matches → pass to next handler.
+  If answer fails → return False (chain stops).
+  If all pass → password reset allowed.
+end note
+
+@enduml
+```
+
+**Description:** The Chain of Responsibility pattern implements the multi-step password recovery process. Each `SecurityQuestionHandler` is responsible for verifying one of the user's three security question answers. The handlers are linked via `set_next()` to form a chain. When `handle()` is called, the first handler checks if the first answer is correct. If so, it passes control to the next handler; if not, it returns `False` immediately. This continues until all three answers are verified (returns `True`) or any answer fails (returns `False`). The factory function `build_security_chain()` constructs the chain with handlers for indices 0, 1, and 2.
+
+---
+
+#### 2.2.6 Mediator Pattern — UI Component Communication
+
+```plantuml
+@startuml mediator_pattern
+title Mediator Pattern — UI Component Communication
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+package "frontend/src/patterns/mediator.js" {
+  class Colleague <<abstract>> {
+    # name : string
+    # mediator : DriveShareMediator
+    + send(event, data)
+    + receive(event, data)
+  }
+
+  class DriveShareMediator <<ConcreteMediator>> {
+    - _colleagues : Map<name, Colleague>
+    - _eventLog : List
+    --
+    + register(colleague)
+    + unregister(name)
+    + notify(senderName, event, data)
+    + getEventLog()
+  }
+}
+
+package "frontend/src/hooks/useColleague.js" {
+  class ComponentColleague <<ConcreteColleague>> {
+    - _handler : function
+    + receive(event, data)
+  }
+}
+
+package "frontend/src/context/MediatorContext.jsx" {
+  class "MediatorProvider" as MediatorCtx {
+    provides mediator to React tree
+  }
+}
+
+Colleague <|-- ComponentColleague
+ComponentColleague --> DriveShareMediator : mediator.notify(...)
+DriveShareMediator ..> Colleague : routes to receive()
+MediatorCtx ..> DriveShareMediator : provides singleton
+
+note right of DriveShareMediator
+  **Event Types:**
+  - USER_LOGGED_OUT
+  - CAR_LISTED, CAR_UPDATED, CAR_DELETED
+  - BOOKING_CREATED, BOOKING_CANCELLED, BOOKING_PAID
+  - CAR_WATCHED, CAR_UNWATCHED
+  - MESSAGE_SENT, NOTIFICATION_RECEIVED
+  - REVIEW_SUBMITTED
+  
+  **Registered Colleagues:**
+  NotificationBell, BalanceDisplay, CarList,
+  WatchList, BookingList, ConversationList,
+  MyCarsOwnerList, PaymentButton, BookingModal,
+  CarForm, ChatWindow, ReviewForm
+end note
+
+@enduml
+```
+
+**Description:** The Mediator pattern decouples React UI components by centralizing their communication through `DriveShareMediator`. Instead of components directly calling each other, they register as "colleagues" with the mediator and communicate via events. For example, when `PaymentButton` processes a payment, it sends a `BOOKING_PAID` event. The mediator routes this to `BalanceDisplay` (to refresh the balance), `BookingList` (to update payment status), and `NotificationBell` (to show a new notification). This pattern eliminates tight coupling between components and makes the event flow explicit and traceable via `getEventLog()`.
+
+---
+
+## 3. Database Schema
+
+The application uses SQLite with SQLAlchemy ORM. Below is the complete database schema:
+
+### 3.1 Entity-Relationship Diagram (PlantUML)
+
+```plantuml
+@startuml database_schema
+title DriveShare — Database Schema (SQLite)
+
+skinparam linetype ortho
+
+entity "users" as users {
+  * **id** : VARCHAR(36) <<PK>>
+  --
+  email : VARCHAR (indexed)
+  password_hash : VARCHAR
+  security_questions : JSON
+  balance : FLOAT
+  created_at : VARCHAR
+}
+
+entity "cars" as cars {
+  * **id** : VARCHAR(36) <<PK>>
+  --
+  owner_id : VARCHAR(36) <<FK>> (indexed)
+  make : VARCHAR
+  model : VARCHAR
+  year : INTEGER
+  mileage : INTEGER
+  daily_price : FLOAT
+  location : VARCHAR
+  features : JSON
+  availability : JSON
+  watchers : JSON
+  is_active : BOOLEAN
+  created_at : VARCHAR
+}
+
+entity "bookings" as bookings {
+  * **id** : VARCHAR(36) <<PK>>
+  --
+  car_id : VARCHAR(36) <<FK>> (indexed)
+  renter_id : VARCHAR(36) <<FK>> (indexed)
+  owner_id : VARCHAR(36) <<FK>> (indexed)
+  start_date : VARCHAR
+  end_date : VARCHAR
+  total_price : FLOAT
+  status : VARCHAR
+  paid : BOOLEAN
+  created_at : VARCHAR
+}
+
+entity "messages" as messages {
+  * **id** : VARCHAR(36) <<PK>>
+  --
+  sender_id : VARCHAR(36) <<FK>> (indexed)
+  receiver_id : VARCHAR(36) <<FK>> (indexed)
+  content : VARCHAR
+  read : BOOLEAN
+  timestamp : VARCHAR
+}
+
+entity "notifications" as notifications {
+  * **id** : VARCHAR(36) <<PK>>
+  --
+  user_id : VARCHAR(36) <<FK>> (indexed)
+  content : VARCHAR
+  type : VARCHAR
+  read : BOOLEAN
+  timestamp : VARCHAR
+}
+
+entity "reviews" as reviews {
+  * **id** : VARCHAR(36) <<PK>>
+  --
+  booking_id : VARCHAR(36) <<FK>> (indexed)
+  reviewer_id : VARCHAR(36) <<FK>> (indexed)
+  reviewed_id : VARCHAR(36) <<FK>> (indexed)
+  reviewed_role : VARCHAR
+  rating : INTEGER
+  comment : VARCHAR
+  created_at : VARCHAR
+}
+
+users ||--o{ cars : "owns"
+users ||--o{ bookings : "rents (renter_id)"
+users ||--o{ bookings : "receives (owner_id)"
+users ||--o{ messages : "sends"
+users ||--o{ messages : "receives"
+users ||--o{ notifications : "has"
+users ||--o{ reviews : "writes"
+users ||--o{ reviews : "receives"
+cars ||--o{ bookings : "booked in"
+bookings ||--o{ reviews : "generates"
+
+@enduml
+```
+
+### 3.2 Table Descriptions
+
+#### **users**
+Stores user account information including authentication credentials and financial balance.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | VARCHAR(36) | Primary key (UUID) |
+| email | VARCHAR | User's email address (indexed for login lookup) |
+| password_hash | VARCHAR | SHA-256 hash of the password |
+| security_questions | JSON | Array of 3 objects with `question` and `answer` fields |
+| balance | FLOAT | User's wallet balance (starts at $1000) |
+| created_at | VARCHAR | ISO timestamp of account creation |
+
+#### **cars**
+Stores vehicle listings posted by owners.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | VARCHAR(36) | Primary key (UUID) |
+| owner_id | VARCHAR(36) | Foreign key to users table |
+| make | VARCHAR | Manufacturer (e.g., "Toyota") |
+| model | VARCHAR | Model name (e.g., "Camry") |
+| year | INTEGER | Model year |
+| mileage | INTEGER | Current odometer reading |
+| daily_price | FLOAT | Rental price per day |
+| location | VARCHAR | Pick-up location |
+| features | JSON | Array of feature strings (e.g., ["Bluetooth", "GPS"]) |
+| availability | JSON | Array of `{start, end}` date windows |
+| watchers | JSON | Array of user IDs watching this car |
+| is_active | BOOLEAN | Soft-delete flag (false = deleted) |
+| created_at | VARCHAR | ISO timestamp of listing creation |
+
+#### **bookings**
+Stores rental reservations between renters and owners.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | VARCHAR(36) | Primary key (UUID) |
+| car_id | VARCHAR(36) | Foreign key to cars table |
+| renter_id | VARCHAR(36) | Foreign key to users (person renting) |
+| owner_id | VARCHAR(36) | Foreign key to users (car owner) |
+| start_date | VARCHAR | Rental start date (YYYY-MM-DD) |
+| end_date | VARCHAR | Rental end date (YYYY-MM-DD) |
+| total_price | FLOAT | Calculated total (daily_price × days) |
+| status | VARCHAR | "confirmed" or "cancelled" |
+| paid | BOOLEAN | Payment completion flag |
+| created_at | VARCHAR | ISO timestamp of booking creation |
+
+#### **messages**
+Stores direct messages between users.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | VARCHAR(36) | Primary key (UUID) |
+| sender_id | VARCHAR(36) | Foreign key to users (message author) |
+| receiver_id | VARCHAR(36) | Foreign key to users (recipient) |
+| content | VARCHAR | Message text content |
+| read | BOOLEAN | Read receipt flag |
+| timestamp | VARCHAR | ISO timestamp of when message was sent |
+
+#### **notifications**
+Stores system-generated notifications for users.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | VARCHAR(36) | Primary key (UUID) |
+| user_id | VARCHAR(36) | Foreign key to users (notification recipient) |
+| content | VARCHAR | Notification message text |
+| type | VARCHAR | Category: "general", "booking", "payment", "watch", or "message" |
+| read | BOOLEAN | Dismissal flag |
+| timestamp | VARCHAR | ISO timestamp of notification creation |
+
+#### **reviews**
+Stores post-rental reviews between renters and owners.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | VARCHAR(36) | Primary key (UUID) |
+| booking_id | VARCHAR(36) | Foreign key to bookings table |
+| reviewer_id | VARCHAR(36) | Foreign key to users (person writing review) |
+| reviewed_id | VARCHAR(36) | Foreign key to users (person being reviewed) |
+| reviewed_role | VARCHAR | "owner" or "renter" |
+| rating | INTEGER | Score from 1-5 |
+| comment | VARCHAR | Review text |
+| created_at | VARCHAR | ISO timestamp of review submission |
+
+---
+
+## 4. User Interface Screenshots
+
+### 4.1 Authentication Pages
+
+#### Screenshot 1: Login Page
+**Title:** Login Page
+
+**Description:** A centered login form with a clean, modern design featuring a purple gradient background. The form contains:
+- "Log In to DriveShare" header
+- Email input field with label
+- Password input field with label
+- Purple "Log In" button
+- "Forgot password?" link below the button
+- "Don't have an account? Sign Up" link at the bottom
+
+The form includes error alert display for invalid credentials and loading state on the submit button.
+
+---
+
+#### Screenshot 2: Registration Page
+**Title:** Registration Page
+
+**Description:** A multi-step registration form with the same purple gradient styling. The form collects:
+- Email address
+- Password (minimum 4 characters)
+- Three security questions with answer fields (for password recovery)
+- "Create Account" button
+
+The page displays validation errors inline and redirects to the dashboard upon successful registration.
+
+---
+
+#### Screenshot 3: Forgot Password Page
+**Title:** Password Recovery Page
+
+**Description:** A two-step password recovery interface:
+1. **Step 1:** User enters their email address to retrieve their security questions
+2. **Step 2:** User answers all three security questions and enters a new password
+
+The Chain of Responsibility pattern is used behind the scenes to verify each answer sequentially.
+
+---
+
+### 4.2 Dashboard & Navigation
+
+#### Screenshot 4: Dashboard Layout
+**Title:** Dashboard Layout (Authenticated)
+
+**Description:** The main authenticated interface with:
+- **Top Navbar:** DriveShare logo, notification bell icon (with unread count badge), user balance display ($X.XX), and logout button
+- **Left Sidebar:** Navigation links including:
+  - Browse Cars
+  - My Cars
+  - My Bookings
+  - Owner Bookings
+  - Watched Cars
+  - Messages
+  - Profile
+- **Main Content Area:** Renders the selected page content via React Router outlet
+
+The sidebar collapses on mobile with a hamburger menu toggle.
+
+---
+
+### 4.3 Car Management
+
+#### Screenshot 5: Browse Cars Page
+**Title:** Browse Cars — Search & Listings
+
+**Description:** A searchable grid of available car listings featuring:
+- **Search Form:** Filters for location, date range, max price, and make
+- **Car Cards Grid:** Responsive 1/2/3 column layout showing each car with:
+  - Make, model, and year
+  - Daily price prominently displayed
+  - Location
+  - Feature tags (Bluetooth, GPS, etc.)
+  - "Book" button to open booking modal
+  - "Watch" button to monitor price drops
+  - "Message Owner" button
+
+The page uses the Mediator pattern to refresh when cars are added, updated, or deleted.
+
+---
+
+#### Screenshot 6: My Cars Page (Owner View)
+**Title:** My Cars — Owner Listings Management
+
+**Description:** Owner's dashboard for managing their car listings with:
+- "My Cars" header with "New Listing" button (purple, with plus icon)
+- Grid of owned car cards, each showing:
+  - Car details (make, model, year, price, location)
+  - "Edit" button to modify listing
+  - "Delete" button to remove listing
+- Empty state message: "You haven't listed any cars yet."
+
+---
+
+#### Screenshot 7: Car Form Modal
+**Title:** Create/Edit Car Listing Form
+
+**Description:** A modal form for creating or editing car listings with:
+- Make input field
+- Model input field
+- Year input field
+- Mileage input field
+- Daily price input field
+- Location input field
+- Features input (comma-separated)
+- Availability date ranges (add/remove windows)
+- "Save" and "Cancel" buttons
+
+The Builder pattern is used on the backend to construct the car object from form data.
+
+---
+
+### 4.4 Booking System
+
+#### Screenshot 8: Booking Modal
+**Title:** Book a Car Modal
+
+**Description:** A modal dialog for creating a new booking:
+- Car summary at top (make, model, daily price)
+- Start date picker
+- End date picker
+- Calculated total price display (days × daily_price)
+- "Confirm Booking" button
+- "Cancel" button
+
+Includes validation for date overlap and prevents booking own cars.
+
+---
+
+#### Screenshot 9: My Bookings Page (Renter View)
+**Title:** My Bookings — Renter's Reservations
+
+**Description:** List of bookings where the user is the renter:
+- Booking cards showing:
+  - Car info (make, model)
+  - Date range (start – end)
+  - Total price
+  - Status badge (Confirmed/Cancelled)
+  - Payment status (Paid/Unpaid)
+  - "Pay Now" button (if unpaid) — uses Proxy pattern
+  - "Cancel Booking" button
+  - "Leave Review" button (after rental complete)
+
+---
+
+#### Screenshot 10: Owner Bookings Page
+**Title:** Owner Bookings — Incoming Reservations
+
+**Description:** List of bookings for cars the user owns:
+- Similar card layout to My Bookings
+- Shows renter's email
+- "Message Renter" button for communication
+- Payment received status
+
+---
+
+### 4.5 Watch & Notifications
+
+#### Screenshot 11: Watched Cars Page
+**Title:** Watched Cars — Price Alerts
+
+**Description:** List of cars the user is watching for price changes:
+- Car cards with current price
+- Target price set by user
+- "Unwatch" button to remove from watch list
+- Notification appears when price drops below target (Observer pattern)
+
+---
+
+#### Screenshot 12: Notifications Panel
+**Title:** Notifications Panel
+
+**Description:** Dropdown panel from the notification bell showing:
+- List of notifications with icons by type:
+  - 📋 Booking notifications
+  - 💳💰 Payment notifications
+  - 🔔📉 Watch/price drop notifications
+  - 💬 Message notifications
+- Timestamp for each notification
+- "Mark as Read" action
+- Unread count badge on bell icon
+
+---
+
+### 4.6 Messaging
+
+#### Screenshot 13: Messages Page
+**Title:** Messages — Conversations
+
+**Description:** Split-pane messaging interface:
+- **Left Panel:** Conversation list showing other users with unread message count
+- **Right Panel:** Chat window displaying:
+  - Message bubbles (sent messages on right, received on left)
+  - Timestamps
+  - Message input field at bottom
+  - "Send" button
+
+---
+
+### 4.7 Reviews & Profile
+
+#### Screenshot 14: Review Form
+**Title:** Leave a Review
+
+**Description:** Post-rental review submission form:
+- Star rating selector (1-5 stars)
+- Comment text area
+- "Submit Review" button
+- Appears after booking is complete and paid
+
+---
+
+#### Screenshot 15: Profile Page
+**Title:** User Profile
+
+**Description:** User profile page showing:
+- Email address
+- Current wallet balance
+- Reviews received (as owner and as renter)
+- Average rating display
+
+---
+
+## 5. References
+
+### 5.1 Design Patterns
+
+1. **Gamma, E., Helm, R., Johnson, R., & Vlissides, J.** (1994). *Design Patterns: Elements of Reusable Object-Oriented Software*. Addison-Wesley.
+   - Singleton Pattern (pp. 127-134)
+   - Observer Pattern (pp. 293-303)
+   - Builder Pattern (pp. 97-106)
+   - Proxy Pattern (pp. 207-217)
+   - Chain of Responsibility Pattern (pp. 223-232)
+   - Mediator Pattern (pp. 273-282)
+
+2. **Refactoring Guru** - Design Patterns
+   - https://refactoring.guru/design-patterns/singleton
+   - https://refactoring.guru/design-patterns/observer
+   - https://refactoring.guru/design-patterns/builder
+   - https://refactoring.guru/design-patterns/proxy
+   - https://refactoring.guru/design-patterns/chain-of-responsibility
+   - https://refactoring.guru/design-patterns/mediator
+
+### 5.2 Technologies & Frameworks
+
+3. **Python Documentation** - https://docs.python.org/3/
+   - hashlib (SHA-256 hashing): https://docs.python.org/3/library/hashlib.html
+   - uuid: https://docs.python.org/3/library/uuid.html
+
+4. **FastAPI Documentation** - https://fastapi.tiangolo.com/
+   - API routing and request handling
+
+5. **SQLAlchemy Documentation** - https://docs.sqlalchemy.org/
+   - ORM for SQLite database operations
+
+6. **React Documentation** - https://react.dev/
+   - Component-based UI development
+   - Context API for state management
+   - Hooks (useState, useEffect, useCallback)
+
+7. **React Router** - https://reactrouter.com/
+   - Client-side routing and navigation
+
+8. **Tailwind CSS** - https://tailwindcss.com/
+   - Utility-first CSS framework for styling
+
+9. **Lucide React** - https://lucide.dev/
+   - Icon library for UI elements
+
+### 5.3 Inspiration
+
+10. **Turo** - https://turo.com/
+    - Peer-to-peer car sharing marketplace that inspired DriveShare's core functionality
+
+### 5.4 PlantUML
+
+11. **PlantUML Documentation** - https://plantuml.com/
+    - UML diagram generation from plain text
+
+---
+
+*Report generated for CIS 476 Term Project — DriveShare*
