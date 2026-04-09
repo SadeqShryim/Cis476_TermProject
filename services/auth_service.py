@@ -77,7 +77,7 @@ def recover_password(email, answers, new_password):
         return {'success': False, 'message': 'Email not found'}
 
     user = users[0]
-
+    # Adam.Said 3.12 bug fix: Fixed issue where any user input would result in success.
     # Chain of Responsibility — verify answers
     chain = build_security_chain()
     if not chain.handle(user, answers):
