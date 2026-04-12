@@ -49,15 +49,15 @@ class WatcherObserver:
 
         if change_type == 'price_drop':
             if self.max_price and car_data['daily_price'] <= self.max_price:
-                message = (f"🔔 Price drop! {car_data['make']} {car_data['model']} "
+                message = (f"Price drop! {car_data['make']} {car_data['model']} "
                            f"is now ${car_data['daily_price']:.2f}/day "
                            f"(your max: ${self.max_price:.2f})")
             else:
-                message = (f"📉 Price update: {car_data['make']} {car_data['model']} "
+                message = (f"Price update: {car_data['make']} {car_data['model']} "
                            f"is now ${car_data['daily_price']:.2f}/day")
 
         elif change_type == 'availability':
-            message = (f"📅 Availability update: {car_data['make']} {car_data['model']} "
+            message = (f"Availability update: {car_data['make']} {car_data['model']} "
                        f"has new availability!")
 
         if message and self.callback:

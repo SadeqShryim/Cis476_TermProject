@@ -84,12 +84,12 @@ class PaymentProxy:
         if result['success']:
             renter_notif = create_notification(
                 renter_id,
-                f"💳 Payment of ${amount:.2f} sent. New balance: ${result['renter_balance']:.2f}",
+                f"Payment of ${amount:.2f} sent. New balance: ${result['renter_balance']:.2f}",
                 'payment'
             )
             owner_notif = create_notification(
                 owner_id,
-                f"💰 Payment of ${amount:.2f} received. New balance: ${result['owner_balance']:.2f}",
+                f"Payment of ${amount:.2f} received. New balance: ${result['owner_balance']:.2f}",
                 'payment'
             )
             db_store.add('notifications.json', renter_notif)

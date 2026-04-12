@@ -1018,7 +1018,3 @@ Includes validation for date overlap and prevents booking own cars.
 
 11. **PlantUML Documentation** - https://plantuml.com/
     - UML diagram generation from plain text
-
----
-
-*Report generated for CIS 476 Term Project — DriveShare*
