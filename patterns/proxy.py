@@ -38,13 +38,6 @@ class RealPaymentService:
 class PaymentProxy:
     """
     Proxy pattern — sits between the client and the real payment service.
-    
-    Responsibilities:
-      1. Validate renter has sufficient balance
-      2. Validate payment amount
-      3. Log the transaction
-      4. Delegate to the real service
-      5. Send notifications to both parties
     """
 
     def __init__(self):

@@ -43,6 +43,7 @@ def login(email, password):
         return {'success': False, 'message': 'Invalid email or password'}
 
     user = users[0]
+    #3.12 Sadeq - Added invalid email/password case. 
     if not verify_password(password, user['password_hash']):
         return {'success': False, 'message': 'Invalid email or password'}
 

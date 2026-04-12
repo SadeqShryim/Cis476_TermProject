@@ -1,7 +1,7 @@
 """
 Builder Pattern — CarListingBuilder
 
-Constructs complex Car listing objects step-by-step, handling
+This construcuts the complex Car class, listing objects step-by-step, handling
 optional/variable attributes cleanly.
 """
 
