@@ -23,11 +23,6 @@ class UIMediator:
     def notify(self, sender, event, data=None):
         """
         Route an event from one component to the appropriate target.
-        
-        Args:
-            sender: Name of the sending component
-            event: Event name (e.g., 'car_selected', 'booking_created')
-            data: Optional data payload
         """
         self._shared_data[event] = data
 

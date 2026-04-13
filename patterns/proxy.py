@@ -38,9 +38,8 @@ class RealPaymentService:
 class PaymentProxy:
     """
     Proxy pattern — sits between the client and the real payment service.
-    
-    Responsibilities:
-      1. Validate renter has sufficient balance
+    It is tasked with:
+      1. Validating that the renter has sufficient balance
       2. Validate payment amount
       3. Log the transaction
       4. Delegate to the real service
@@ -80,6 +79,7 @@ class PaymentProxy:
         status = 'SUCCESS' if result['success'] else 'FAILED'
         self._log_transaction(renter_id, owner_id, amount, status)
 
+        #Adam.Said: (3/22 Fixed notifications failing to send)
         # Step 5: Send notifications
         if result['success']:
             renter_notif = create_notification(

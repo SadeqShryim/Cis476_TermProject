@@ -1,8 +1,8 @@
 """
 Builder Pattern — CarListingBuilder
 
-Constructs complex Car listing objects step-by-step, handling
-optional/variable attributes cleanly.
+This constructs a complex Car listing objects step by step and handles
+optional/variable attributes in a cleaner way.
 """
 
 from models.car import create_car

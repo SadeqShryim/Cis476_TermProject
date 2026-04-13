@@ -9,11 +9,6 @@ from patterns.chain_of_responsibility import build_security_chain
 def register(email, password, security_questions):
     """
     Register a new user.
-    
-    Args:
-        email: User email
-        password: Plain-text password
-        security_questions: list of 3 dicts {'question': ..., 'answer': ...}
     """
     # Check duplicate email
     existing = db_store.find_by_field('users.json', 'email', email.lower().strip())

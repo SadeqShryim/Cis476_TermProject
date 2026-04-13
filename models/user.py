@@ -8,14 +8,6 @@ from datetime import datetime
 def create_user(email, password, security_questions):
     """
     Create a new user dict.
-    
-    Args:
-        email: User's email address
-        password: Plain-text password (will be hashed)
-        security_questions: List of 3 dicts with 'question' and 'answer' keys
-    
-    Returns:
-        dict representing the user
     """
     return {
         'id': str(uuid.uuid4()),

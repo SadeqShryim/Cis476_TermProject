@@ -79,7 +79,7 @@ def book_car(car_id, renter_id, start_date, end_date):
     car = db_store.find_by_id('cars.json', car_id)
     if not car:
         return {'success': False, 'message': 'Car not found'}
-
+    #Sadeq.Shryim: (3/18: Bug fix added extra fail condition)
     if car['owner_id'] == renter_id:
         return {'success': False, 'message': 'You cannot book your own car'}
 
@@ -160,7 +160,7 @@ def cancel_booking(booking_id, user_id):
 
     notif = create_notification(
         other_id,
-        f"❌ Booking cancelled: {car_name} ({booking['start_date']} – {booking['end_date']})",
+        f"Booking cancelled: {car_name} ({booking['start_date']} – {booking['end_date']})",
         'booking'
     )
     db_store.add('notifications.json', notif)

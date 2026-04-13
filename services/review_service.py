@@ -7,15 +7,6 @@ from models.review import create_review
 def leave_review(booking_id, reviewer_id, rating, comment):
     """
     Allows a renter or owner to leave a review after a booking is complete.
-
-    Args:
-        booking_id (str): The ID of the booking to review.
-        reviewer_id (str): The ID of the user leaving the review.
-        rating (int): A rating from 1 to 5.
-        comment (str): The review text.
-
-    Returns:
-        dict: A result dictionary with success status and message/data.
     """
     booking = db_store.find_by_id('bookings.json', booking_id)
     if not booking:
@@ -55,12 +46,6 @@ def leave_review(booking_id, reviewer_id, rating, comment):
 def get_reviews_for_user(user_id):
     """
     Get all reviews where the given user was the one being reviewed.
-    
-    Args:
-        user_id (str): The ID of the user.
-
-    Returns:
-        list: A list of review dictionaries.
     """
     reviews = db_store.load_all('reviews.json')
     user_reviews = [r for r in reviews if r['reviewed_id'] == user_id]
@@ -68,14 +53,7 @@ def get_reviews_for_user(user_id):
 
 def get_reviews_by_booking(booking_id):
     """
-
     Get all reviews associated with a specific booking.
-    
-    Args:
-        booking_id (str): The ID of the booking.
-
-    Returns:
-        list: A list of review dictionaries for the booking.
     """
     reviews = db_store.load_all('reviews.json')
     print(f"DEBUG: All reviews from DB: {reviews}") # DEBUG

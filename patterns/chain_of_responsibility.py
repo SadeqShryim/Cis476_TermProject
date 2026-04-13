@@ -1,7 +1,7 @@
 """
 Chain of Responsibility Pattern — Password Recovery
 
-Three security question handlers are chained together. Each handler verifies
+A chain of three security question handlers are created. Each handler verifies
 one security question answer. If all three pass, the user is allowed to
 reset their password. If any fail, recovery is denied.
 """
@@ -22,13 +22,6 @@ class SecurityQuestionHandler:
     def handle(self, user, answers):
         """
         Verify the security question at this handler's index.
-        
-        Args:
-            user: User dict containing 'security_questions' list
-            answers: List of answers provided by the user
-            
-        Returns:
-            True if all questions in the chain pass, False otherwise
         """
         if self._question_index >= len(user['security_questions']):
             return True  # No more questions to verify
